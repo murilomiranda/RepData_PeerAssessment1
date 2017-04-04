@@ -7,19 +7,62 @@ output:
 
 
 ## Loading and preprocessing the data
-
-
+```{r}
+library(dplyr)
+data <- read.csv("activity.csv")
+str(data)
+```
 
 ## What is mean total number of steps taken per day?
 
+```{r}
+count_step <- data %>% group_by(date) %>% summarise(count = sum(steps, na.rm = TRUE))
+hist(count_step$count, main = "total number of steps/day", xlab = "number of steps", las = 1, col = "grey80")
+```
+
+
+The **mean** and **median** total number of steps taken per day are `r mean(count_step$count, na.rm = T)` and `r median(count_step$count, na.rm = T)`, respectively.
 
 
 ## What is the average daily activity pattern?
+```{r}
+step_inter <- data %>% group_by(interval) %>% summarise(mean = mean(steps, na.rm = TRUE))
+plot(step_inter, type = "l", las = 1, col = "darkblue")
+```
 
-
+The maximum number of steps occurs at `r step_inter$interval[which(max(step_inter$mean) == step_inter$mean)]` 5-minute interval with `r max(step_inter$mean)` steps.
 
 ## Imputing missing values
+The total number of missing values in the dataset is `r sum(is.na(data$steps))`. This corresponds to `r sum(is.na(data$steps))/nrow(data)*100`% the total entrances.
 
+Create a new dataset using mean for 5-minute interval:
 
+```{r}
+impute.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+mean_day <- data %>% group_by(interval) %>% mutate(steps = impute.mean(steps))
+```
+
+```{r}
+count_step2 <- mean_day %>% group_by(date) %>% summarise(count = sum(steps, na.rm = TRUE))
+hist(count_step2$count, main = "total number of steps/day", xlab = "number of steps", las = 1, col = "grey80")
+```
+
+The **mean** and **median** total number of steps taken per day are `r mean(count_step2$count, na.rm = T)` and `r median(count_step2$count, na.rm = T)`, respectively.
+
+These values differ (`r mean(count_step2$count, na.rm = T)` and `r median(count_step2$count, na.rm = T)`) from the estimates from the first part of the assignment (`r mean(count_step$count, na.rm = T)` and `r median(count_step$count, na.rm = T)`). When the missing values were replaced by mean values, the shape of histogram became more normal distributed.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+mean_day$date2 <- weekdays(as.Date(mean_day$date))
+weekday <- c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
+mean_day$date3 <- factor(mean_day$date2 %in% weekday, levels=c(F, T), labels = c('weekend', 'weekday'))
+
+step_inter2 <- mean_day %>% group_by(date3, interval) %>% summarise(mean = mean(steps, na.rm = TRUE))
+```
+
+```{r}
+library(lattice)
+xyplot(mean ~ interval|date3, data = step_inter2, type = "l", layout = c(1,2), ylab = "Average of number of steps")
+```
+
+
